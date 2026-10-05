@@ -21,6 +21,7 @@ describe("guarded fetch request authority", () => {
               lookupFn,
               beforeRequest: owner === "beforeRequest" ? (asynchronousGuard as never) : undefined,
             }),
+          // oxlint-disable-next-line typescript/no-misused-promises -- Deliberately violates the synchronous final-dispatch contract.
           owner === "scoped final authority" ? asynchronousGuard : undefined,
         ),
       ).rejects.toThrow("must be synchronous");
