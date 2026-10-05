@@ -39,6 +39,8 @@ export type ChatMetadataReadParams = {
   assertCurrent?: () => void;
   /** Refresh saved-session authority and begin preparation before yielding again. */
   withCurrent?: CurrentReadAuthority["withCurrent"];
+  /** Synchronous saved-session authority at credential-bearing provider dispatch. */
+  beforeRequest?: () => void;
   release?: () => void;
   draftAccountSelection?: UserModelAccountSelection;
 };

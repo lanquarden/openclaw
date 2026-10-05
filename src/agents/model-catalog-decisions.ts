@@ -337,6 +337,7 @@ export function createModelCatalogDecisions(params: ModelCatalogDecisionParams) 
       allowDiscovery: boolean;
       refresh?: boolean;
       withCurrent?: CurrentReadAuthority["withCurrent"];
+      beforeRequest?: () => void;
     },
   ): Promise<void> => {
     const accountCatalog = params.accountCatalog;
@@ -382,6 +383,7 @@ export function createModelCatalogDecisions(params: ModelCatalogDecisionParams) 
             isCurrent,
             assertCurrent,
             withCurrent: options.withCurrent,
+            beforeRequest: options.beforeRequest,
           };
           return withCurrentReadAuthority(authority, () =>
             loadSelectedProviderAccountCatalog(selectedRequest),

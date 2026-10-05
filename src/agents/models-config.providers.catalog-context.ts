@@ -215,6 +215,7 @@ export async function loadSelectedProviderAccountCatalog(params: {
   isCurrent: () => boolean;
   assertCurrent: () => void;
   withCurrent?: CurrentReadAuthority["withCurrent"];
+  beforeRequest?: () => void;
 }): Promise<readonly ProviderCatalogOutcome[]> {
   const { providerId, profileId, authStore } = params;
   const assertCurrent = () => {
@@ -310,8 +311,10 @@ export async function loadSelectedProviderAccountCatalog(params: {
     preparationAuthority: CurrentReadAuthority;
   };
   await withCurrentReadAuthority(authority, () =>
-    withGuardedFetchRequestAuthority(assertCurrent, async () =>
-      runProviderCatalogWithTimeout(catalogRequest),
+    withGuardedFetchRequestAuthority(
+      assertCurrent,
+      async () => runProviderCatalogWithTimeout(catalogRequest),
+      params.beforeRequest,
     ),
   );
   return withCurrentReadAuthority(authority, () => acquired);

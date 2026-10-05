@@ -42,6 +42,7 @@ it("revalidates selected-account authority before consuming an awaited discovery
   const entered = createDeferred();
   const release = createDeferred();
   const revoked = new Error("Session changed during selected-account discovery");
+  const beforeRequest = vi.fn();
   let current = true;
   const readCredential = vi.fn(() => "synthetic-key");
   const authStore = createAuthProfileStoreFixture({
@@ -78,6 +79,7 @@ it("revalidates selected-account authority before consuming an awaited discovery
     agentDir,
     workspaceDir: agentDir,
     isCurrent: () => true,
+    beforeRequest,
     // Foreign commits become visible through the awaited source read.
     assertCurrent: () => {},
     withCurrent: async <T>(consume: () => T): Promise<Awaited<T>> => {
@@ -91,6 +93,7 @@ it("revalidates selected-account authority before consuming an awaited discovery
   void request.catch(() => {});
   try {
     await awaitGateBeforeSettlement(entered.promise, request, "Discovery did not start");
+    expect(beforeRequest).not.toHaveBeenCalled();
     const preparedReads = readCredential.mock.calls.length;
     expect(preparedReads).toBeGreaterThan(0);
     current = false;

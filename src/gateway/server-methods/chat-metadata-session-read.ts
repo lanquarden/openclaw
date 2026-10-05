@@ -74,6 +74,7 @@ export async function prepareChatMetadataSessionRead(params: {
         selected,
         isCurrent: selected.isCurrent,
         assertCurrent: assertNativeCurrent,
+        beforeRequest: assertNativeCurrent,
         release,
         async withCurrent<T>(consume: () => T): Promise<Awaited<T>> {
           assertNativeCurrent();
@@ -123,10 +124,38 @@ export async function prepareChatMetadataSessionRead(params: {
       assertCurrent,
     );
     assertCurrent();
+    const matchesSelected = (current: typeof selected) =>
+      current.agentId === selected.agentId &&
+      current.canonicalKey === selected.canonicalKey &&
+      current.legacyKey === selected.legacyKey &&
+      current.storePath === selected.storePath &&
+      isDeepStrictEqual(current.readSource, selected.readSource) &&
+      isDeepStrictEqual(current.capturedReadSource, selected.capturedReadSource) &&
+      isDeepStrictEqual(current.capturedReadSources, selected.capturedReadSources) &&
+      sameMetadataEntry(selected.entry, current.entry);
+    let requestRead: ReturnType<typeof retainGatewaySessionEntryReadOnly> | undefined;
     return {
       selected,
       isCurrent,
       assertCurrent,
+      beforeRequest: () => {
+        assertCurrent();
+        // GuardedFetchOptions.beforeRequest is synchronous after transport preparation,
+        // immediately before credential send. Retain the old canonical reread here;
+        // awaiting a worker would reopen the foreign-commit revocation window.
+        if (!requestRead) {
+          requestRead = retainGatewaySessionEntryReadOnly(
+            params.sessionKey,
+            params.agentId,
+            sameMetadataEntry,
+            params.cfg,
+          );
+          releases.push(requestRead.release);
+        }
+        if (!matchesSelected(requestRead) || !requestRead.isCurrentAtResponse()) {
+          throw changed();
+        }
+      },
       release,
       async withCurrent<T>(consume: () => T): Promise<Awaited<T>> {
         assertRefreshable();
@@ -140,14 +169,7 @@ export async function prepareChatMetadataSessionRead(params: {
           (current) => {
             assertRefreshable();
             if (
-              current.agentId !== selected.agentId ||
-              current.canonicalKey !== selected.canonicalKey ||
-              current.legacyKey !== selected.legacyKey ||
-              current.storePath !== selected.storePath ||
-              !isDeepStrictEqual(current.readSource, selected.readSource) ||
-              !isDeepStrictEqual(current.capturedReadSource, selected.capturedReadSource) ||
-              !isDeepStrictEqual(current.capturedReadSources, selected.capturedReadSources) ||
-              !sameMetadataEntry(selected.entry, current.entry) ||
+              !matchesSelected(current) ||
               (retained && !retained.acknowledge(current.entry, revision!))
             ) {
               throw changed();

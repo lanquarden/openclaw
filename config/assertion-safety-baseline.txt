@@ -200,7 +200,6 @@ extensions/deepinfra/provider-models.ts	1
 extensions/deepseek/provider-policy-api.ts	2
 extensions/device-pair/index.ts	6
 extensions/device-pair/notify.ts	1
-extensions/diagnostics-otel/src/service-content-normalization.ts	1
 extensions/diagnostics-otel/src/service-exporter.ts	1
 extensions/diagnostics-otel/src/service-logs.ts	8
 extensions/diagnostics-otel/src/service-propagation.ts	2
@@ -436,7 +435,7 @@ extensions/line/src/accounts.ts	3
 extensions/line/src/actions.ts	4
 extensions/line/src/auto-reply-delivery.ts	1
 extensions/line/src/flex-templates/basic-cards.ts	12
-extensions/line/src/flex-templates/media-control-cards.ts	15
+extensions/line/src/flex-templates/media-control-cards.ts	12
 extensions/line/src/flex-templates/schedule-cards.ts	27
 extensions/line/src/gateway.ts	1
 extensions/line/src/monitor-durable.ts	1
@@ -635,7 +634,6 @@ extensions/nextcloud-talk/src/gateway.ts	2
 extensions/nextcloud-talk/src/inbound.ts	9
 extensions/nextcloud-talk/src/message-actions.ts	3
 extensions/nextcloud-talk/src/message-adapter.ts	1
-extensions/nextcloud-talk/src/monitor-runtime.ts	1
 extensions/nextcloud-talk/src/policy.ts	2
 extensions/nextcloud-talk/src/send.ts	1
 extensions/nextcloud-talk/src/setup-core.ts	8
@@ -1529,7 +1527,7 @@ src/agents/tools/cron-tool-write.ts	2
 src/agents/tools/cron-tool.ts	5
 src/agents/tools/dashboard-tool.ts	1
 src/agents/tools/embedded-gateway-stub.ts	7
-src/agents/tools/gateway-tool.ts	3
+src/agents/tools/gateway-tool.ts	2
 src/agents/tools/goal-tools.ts	2
 src/agents/tools/heartbeat-response-tool.ts	1
 src/agents/tools/image-generate-tool.ts	1
@@ -1651,7 +1649,7 @@ src/channels/draft-stream-loop.ts	1
 src/channels/draft-streaming-chunking.ts	1
 src/channels/feedback-reflection.ts	1
 src/channels/ids.ts	1
-src/channels/inbound-event/context.ts	6
+src/channels/inbound-event/context.ts	5
 src/channels/location.ts	1
 src/channels/message-access/admission-evidence.ts	1
 src/channels/message/adapter.ts	1
@@ -1779,7 +1777,6 @@ src/cli/run-main.ts	1
 src/cli/secrets-cli.ts	2
 src/cli/secrets-store-cli.ts	1
 src/cli/session-ref.ts	1
-src/cli/setup-onboard-configure-help-fast-path.ts	2
 src/cli/skills-cli.ts	2
 src/cli/startup-metadata.ts	1
 src/cli/subprocess-exit-code.ts	1
@@ -2374,7 +2371,7 @@ src/mcp/plugin-tools-handlers.ts	2
 src/media-generation/provider-registry.ts	1
 src/media-understanding/entry-capabilities.ts	1
 src/media-understanding/image-model-runtime.ts	3
-src/media-understanding/runner.entries.ts	4
+src/media-understanding/runner.entries.ts	1
 src/media-understanding/shared.ts	1
 src/media/audio-transcode.ts	1
 src/media/bounded-read-file.ts	2
@@ -2523,7 +2520,6 @@ src/plugins/lazy-service-module.ts	1
 src/plugins/legacy-session-surfaces.ts	2
 src/plugins/loader-channel-runtime.ts	1
 src/plugins/loader-channel-setup.ts	12
-src/plugins/loader-discovery.ts	1
 src/plugins/loader-load-context.ts	4
 src/plugins/loader-module-runtime.ts	5
 src/plugins/loader-records.ts	1
@@ -2702,7 +2698,7 @@ src/talk/provider-internal.ts	2
 src/talk/turn-context-tracker.ts	2
 src/trajectory/export.ts	8
 src/trajectory/runtime-store.sqlite.ts	1
-src/trajectory/runtime.ts	4
+src/trajectory/runtime.ts	3
 src/transcripts/config.ts	2
 src/transcripts/store-export-ownership.ts	2
 src/transcripts/store-sqlite.ts	2
@@ -2711,7 +2707,7 @@ src/tts/status-config.ts	1
 src/tts/tts-config.ts	5
 src/tts/tts-core.ts	1
 src/tts/tts-payload.ts	1
-src/tts/tts-provider-resolution.ts	2
+src/tts/tts-provider-resolution.ts	1
 src/tts/tts-request.ts	1
 src/tts/tts-settings.ts	3
 src/tts/tts-telephony.ts	1

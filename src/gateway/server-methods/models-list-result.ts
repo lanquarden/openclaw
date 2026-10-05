@@ -82,7 +82,10 @@ type BuildModelsListResultParams = {
   requesterProfileId?: string;
   readScope?: ChatMetadataReadParams;
   /** Request authority does not imply a session/account-selection projection. */
-  publicationScope?: Pick<ChatMetadataReadParams, "isCurrent" | "assertCurrent" | "withCurrent">;
+  publicationScope?: Pick<
+    ChatMetadataReadParams,
+    "isCurrent" | "assertCurrent" | "withCurrent" | "beforeRequest"
+  >;
   preparationAuthority?: CurrentReadAuthority;
   params: ModelsListParams;
   includeManualSelection?: boolean;
@@ -289,6 +292,7 @@ export async function prepareModelsListResult({
         allowDiscovery: !params.preloadedOnly && !params.params.preparedOnly,
         refresh,
         withCurrent: authority?.withCurrent,
+        beforeRequest: publicationScope?.beforeRequest,
       },
     );
   }
@@ -639,7 +643,7 @@ export async function prepareModelsListResult({
       }
       return () => {
         const evaluation = evaluateNative(entry, host);
-        evaluations.set(resolveModelCatalogIdentityKey(entry), evaluation);
+        evaluations.set(key, evaluation);
         const routeManaged = evaluation.routeResolution !== null;
         const syntheticLocal =
           !routeManaged &&

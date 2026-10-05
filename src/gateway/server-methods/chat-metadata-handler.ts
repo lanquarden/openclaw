@@ -110,6 +110,11 @@ export async function resolveChatMetadataReadParams(
           read.assertCurrent();
         },
         withCurrent: (consume) => read.withCurrent(consume),
+        beforeRequest: () => {
+          assertVisible();
+          assertRequestCurrent();
+          read.beforeRequest();
+        },
         release: read.release,
         requesterProfileId,
       };
