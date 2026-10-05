@@ -116,9 +116,9 @@ in the existing agent writer. The synchronous transaction rereads the current se
 appends the original event bytes, and returns an acknowledged projection receipt.
 The host checks reader authority at transaction and commit and schedules any required
 projection reconciliation only after acknowledgment. Accepted writes use the existing
-FIFO and settlement owner. Maintenance, process-held incognito, and the released raw
-transcript testing SDK retain their native adapter. Schemas, stored bytes, retention,
-and update behavior are unchanged.
+FIFO and settlement owner. Maintenance and process-held incognito retain their native
+adapter, which first-party SQLite test helpers also reuse. Schemas, stored bytes,
+retention, and update behavior are unchanged.
 
 Explicit restart-tombstone recovery clones the transcript and changes both session
 identities atomically in the agent writer worker. Source preparation uses worker
