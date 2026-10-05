@@ -154,13 +154,23 @@ function projectMcpCallToolResultContent(result: {
 
 /** Projects a raw MCP CallToolResult exactly once at the model boundary. */
 export function projectMcpCallToolResult(
-  result: { content?: unknown; structuredContent?: unknown; isError?: unknown },
+  result: {
+    content?: unknown;
+    structuredContent?: unknown;
+    isError?: unknown;
+    _meta?: unknown;
+  },
   details: Record<string, unknown> = {},
 ): AgentToolResult<unknown> {
   const projectedContent = projectMcpCallToolResultContent(result);
   const unprojectable = projectedContent.unprojectable === true;
   const isError = result.isError === true || unprojectable;
   const content = projectedContent.content;
+  // Preserve only the UI slice of `_meta` (e.g. `_meta.ui.resourceUri`) so MCP App
+  // descriptors survive nested/deferred tool-result recording without persisting
+  // arbitrary server-controlled metadata.
+  const mcpUiMeta =
+    isRecord(result._meta) && isRecord(result._meta.ui) ? result._meta.ui : undefined;
   const projected: AgentToolResult<unknown> = {
     content:
       content.length > 0
@@ -180,6 +190,7 @@ export function projectMcpCallToolResult(
       ...(result.structuredContent !== undefined && !unprojectable
         ? { structuredContent: result.structuredContent }
         : {}),
+      ...(mcpUiMeta ? { _meta: { ui: mcpUiMeta } } : {}),
       ...(isError ? { status: "error" } : {}),
     },
   };

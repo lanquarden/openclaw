@@ -58,6 +58,37 @@ import {
 
 registerAgentSessionLoopTestLifecycle();
 
+const EXAMPLE_WIDGET_URI = "ui://example/widget.html";
+const EXAMPLE_WIDGET_PREVIEW = {
+  kind: "canvas",
+  view: { id: "mcp-app-example", title: "show_widget UI" },
+  presentation: { target: "assistant_message", title: "show_widget UI" },
+  mcpApp: {
+    viewId: "mcp-app-example",
+    serverName: "example",
+    toolName: "show_widget",
+    uiResourceUri: EXAMPLE_WIDGET_URI,
+  },
+};
+const EXAMPLE_WIDGET_META = { ui: { resourceUri: EXAMPLE_WIDGET_URI } };
+
+/** Exercises the real catalog/deferred (`tool_call`) execution and recording path. */
+async function runNestedCatalogTool(result: unknown) {
+  const prepared = prepareCatalogExecutor({ sessionManager: SessionManager.inMemory() });
+  await prepared.toolSearchCatalogExecutor({
+    tool: { name: "show_widget", execute: async () => result } as never,
+    toolName: "show_widget",
+    source: "mcp",
+    toolCallId: "nested-app",
+    parentToolCallId: "outer-exec",
+    input: {},
+    acceptResultBeforeProjection: async (candidate) => candidate,
+  });
+  const activities = await prepared.readActivities();
+  prepared.subscription.unsubscribe();
+  return activities[0]!;
+}
+
 describe("nested tool activity ownership", () => {
   afterEach(async () => {
     const { testing } = await import("../runs.test-support.js");
@@ -434,4 +465,75 @@ describe("nested tool activity ownership", () => {
       expect(mocks.notifyToolActivity).toHaveBeenCalledWith("run-output-schema");
     },
   );
+
+  it("keeps the MCP App preview, bounded and deduplicated, when output exceeds the display limit", async () => {
+    const activity = await runNestedCatalogTool({
+      content: [{ type: "text", text: "synthetic widget payload" }],
+      details: {
+        mcpServer: "example",
+        mcpTool: "show_widget",
+        structuredContent: {
+          points: Array.from({ length: 6_000 }, (_, index) => `item-${index}-${"x".repeat(8)}`),
+        },
+        mcpAppPreview: EXAMPLE_WIDGET_PREVIEW,
+        _meta: EXAMPLE_WIDGET_META,
+      },
+      _meta: EXAMPLE_WIDGET_META,
+    });
+    const recorded = activity.details.result as Record<string, unknown>;
+    // The bulk output is elided to a display placeholder…
+    expect(recorded.content).toEqual([
+      { type: "text", text: "[Nested tool output omitted: exceeds display limit]" },
+    ]);
+    // …but the MCP App descriptor survives so the Control UI can register and render it.
+    const recordedDetails = recorded.details as Record<string, unknown>;
+    expect(recordedDetails.mcpAppPreview).toEqual(EXAMPLE_WIDGET_PREVIEW);
+    // Exactly one descriptor slot: no duplicated `_meta` copy.
+    expect(Object.keys(recordedDetails)).toEqual(["mcpAppPreview"]);
+    expect(recorded._meta).toBeUndefined();
+    // Displayed data never exceeds the original cap.
+    expect(Buffer.byteLength(JSON.stringify(recorded), "utf8")).toBeLessThanOrEqual(32_768);
+    // The transcript schema still accepts the persisted activity.
+    expect(readNestedToolActivity(activity)).toBeDefined();
+  });
+
+  it("preserves the MCP App preview and _meta for results under the display limit", async () => {
+    const activity = await runNestedCatalogTool({
+      content: [{ type: "text", text: "widget ready" }],
+      details: {
+        mcpServer: "example",
+        mcpTool: "show_widget",
+        mcpAppPreview: EXAMPLE_WIDGET_PREVIEW,
+        _meta: EXAMPLE_WIDGET_META,
+      },
+      _meta: EXAMPLE_WIDGET_META,
+    });
+    const recorded = activity.details.result as Record<string, unknown>;
+    expect(recorded.content).toEqual([{ type: "text", text: "widget ready" }]);
+    expect((recorded.details as Record<string, unknown>).mcpAppPreview).toEqual(
+      EXAMPLE_WIDGET_PREVIEW,
+    );
+    expect(recorded._meta).toEqual(EXAMPLE_WIDGET_META);
+  });
+
+  it("retains only the allowlisted UI descriptor when output is elided without a preview", async () => {
+    const activity = await runNestedCatalogTool({
+      content: [{ type: "text", text: "synthetic widget payload" }],
+      details: {
+        mcpServer: "example",
+        mcpTool: "show_widget",
+        structuredContent: {
+          points: Array.from({ length: 6_000 }, (_, index) => `item-${index}-${"x".repeat(8)}`),
+        },
+        _meta: { ui: { resourceUri: EXAMPLE_WIDGET_URI }, secret: "server-internal" },
+      },
+    });
+    const recorded = activity.details.result as Record<string, unknown>;
+    const recordedDetails = recorded.details as Record<string, unknown>;
+    // Only the UI slice survives; arbitrary server metadata is dropped.
+    expect(recordedDetails._meta).toEqual({ ui: { resourceUri: EXAMPLE_WIDGET_URI } });
+    expect(JSON.stringify(recorded)).not.toContain("server-internal");
+    expect(Buffer.byteLength(JSON.stringify(recorded), "utf8")).toBeLessThanOrEqual(32_768);
+    expect(readNestedToolActivity(activity)).toBeDefined();
+  });
 });
