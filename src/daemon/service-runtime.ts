@@ -7,6 +7,7 @@ import {
   assertServiceInspectionFallbackAllowed,
   ServiceInspectionError,
   type ServiceInspectionReason,
+  type SystemdServiceStartRefusal,
 } from "./service-inspection-error.js";
 export type SystemdUserTransport =
   | { kind: "session-bus" | "runtime-bus" | "private"; address: string; runtimeDir: string }
@@ -60,11 +61,6 @@ export type GatewayServiceRuntime = {
     plistPath?: string;
   };
   systemd?: GatewayServiceSystemdRuntime;
-};
-
-export type SystemdServiceStartRefusal = {
-  reason: "masked" | "refuse-manual-start" | "disabled-no-start";
-  message: string;
 };
 
 /** Native start policy is diagnostic; it never establishes process or definition ownership. */

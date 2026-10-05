@@ -8,8 +8,10 @@ import {
   ensureCompletionCacheExists,
 } from "../../commands/doctor-completion.js";
 import { resolveGatewayStartupTiming } from "../../commands/gateway-startup-timing.js";
-import { ServiceStartRefusalError } from "../../daemon/service-inspection-error.js";
-import type { SystemdServiceStartRefusal } from "../../daemon/service-runtime.js";
+import {
+  ServiceStartRefusalError,
+  type SystemdServiceStartRefusal,
+} from "../../daemon/service-inspection-error.js";
 import { resolveGatewayService } from "../../daemon/service.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { readGatewayOwnerLease } from "../../infra/gateway-owner-lease.js";

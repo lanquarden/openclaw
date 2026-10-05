@@ -1,7 +1,6 @@
 import { collectNestedErrorCandidates } from "../infra/error-graph-internal.js";
 import { UPDATE_PREFLIGHT_DETAILS } from "../infra/update-preflight-details.js";
 import { hasCommandProcessCleanupError } from "../process/exec-result.js";
-import type { SystemdServiceStartRefusal } from "./service-runtime.js";
 
 /** Native probe facts are diagnostic only; they never grant lifecycle authority. */
 const SERVICE_INSPECTION_MESSAGES = {
@@ -150,6 +149,11 @@ export function assertServiceInspectionFallbackAllowed(error: unknown): void {
     throw refusal;
   }
 }
+
+export type SystemdServiceStartRefusal = {
+  reason: "masked" | "refuse-manual-start" | "disabled-no-start";
+  message: string;
+};
 
 /** A known native start restriction must not collapse into unavailable inspection. */
 export class ServiceStartRefusalError extends Error {

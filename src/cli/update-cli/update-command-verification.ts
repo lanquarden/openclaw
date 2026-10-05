@@ -1,9 +1,7 @@
 import { theme } from "../../../packages/terminal-core/src/theme.js";
 import { resolveGatewayRestartLogPath } from "../../daemon/restart-logs.js";
-import type {
-  SystemdServiceStartRefusal,
-  GatewayServiceRuntime,
-} from "../../daemon/service-runtime.js";
+import type { SystemdServiceStartRefusal } from "../../daemon/service-inspection-error.js";
+import type { GatewayServiceRuntime } from "../../daemon/service-runtime.js";
 import { resolveGatewayService } from "../../daemon/service.js";
 import {
   normalizeUpdateFailureFacts,
