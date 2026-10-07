@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createNestedToolActivity,
-  nestedToolActivityContent,
   readNestedToolActivity,
 } from "../sessions/nested-tool-activity.js";
 import { augmentChatHistoryWithCanvasBlocks } from "./chat-display-projection.canvas.js";
+import { prepareChatHistoryRecoveryMessages } from "./chat-display-projection.core.js";
 
 // Regression: a large MCP App tool result rendered inline while the run was live
 // but lost its inline canvas once the committed message was re-projected/read.
@@ -49,25 +49,13 @@ function recordNestedResult(result: unknown) {
   });
 }
 
-/** Rebuild the transcript-shaped custom row the commit-time projection sees. */
-function projectedNestedMessage(activity: ReturnType<typeof recordNestedResult>) {
-  const [call, toolResult] = nestedToolActivityContent(activity);
-  return {
-    role: "custom",
-    customType: "openclaw.nested-tool.v1",
-    display: true,
-    content: [call, toolResult],
-    details: activity.details,
-    timestamp: 2,
-  };
-}
-
-/** Runs the same commit-time reconstruction used when chat history is re-read. */
+/** Re-read the serialized activity through real history recovery and sanitation. */
 function committedCanvasPreviews(activity: ReturnType<typeof recordNestedResult>) {
-  const augmented = augmentChatHistoryWithCanvasBlocks([
-    projectedNestedMessage(activity),
+  const recovered = prepareChatHistoryRecoveryMessages([
+    JSON.parse(JSON.stringify(activity)),
     { role: "assistant", content: [{ type: "text", text: "widget ready" }] },
   ]);
+  const augmented = augmentChatHistoryWithCanvasBlocks(recovered);
   const assistant = augmented.at(-1) as { content?: Array<{ type?: string }> };
   return (assistant.content ?? []).filter((block) => block.type === "canvas");
 }
@@ -119,7 +107,11 @@ describe("MCP App commit-time canvas for deferred (nested) tool results", () => 
     // which is exactly the pre-fix behaviour that dropped the large-result canvas.
     const activity = recordNestedResult({
       content: [{ type: "text", text: "synthetic widget payload" }],
-      details: { mcpServer: "example", mcpTool: "show_widget", structuredContent: LARGE_STRUCTURED_CONTENT },
+      details: {
+        mcpServer: "example",
+        mcpTool: "show_widget",
+        structuredContent: LARGE_STRUCTURED_CONTENT,
+      },
     });
     const recorded = activity.details.result as Record<string, unknown>;
     expect(recorded.details).toBeUndefined();

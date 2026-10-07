@@ -121,6 +121,57 @@ describe("nested MCP App activity recording", () => {
     expect(activity.details.result.mcpAppResourceUri).toBe(EXAMPLE_WIDGET_URI);
   });
 
+  it("records terminal tool results without persisting runtime-only termination flags", async () => {
+    const activity = await runNestedCatalogTool({
+      content: [{ type: "text", text: "widget ready" }],
+      details: { mcpAppPreview: EXAMPLE_WIDGET_PREVIEW },
+      terminate: true,
+    });
+    expect(activity.details.result).toEqual({
+      content: [{ type: "text", text: "widget ready" }],
+      details: { mcpAppPreview: EXAMPLE_WIDGET_PREVIEW },
+    });
+    expect(readNestedToolActivity(activity)).toBeDefined();
+  });
+
+  it("falls back to bounded UI metadata when the materialized preview is oversized", async () => {
+    const activity = await runNestedCatalogTool({
+      content: [{ type: "text", text: "synthetic widget payload" }],
+      details: {
+        structuredContent: oversizedStructuredContent(),
+        mcpAppPreview: { ...EXAMPLE_WIDGET_PREVIEW, padding: "x".repeat(8_192) },
+        _meta: { ...EXAMPLE_WIDGET_META, secret: "server-internal" },
+        mcpAppResourceUri: EXAMPLE_WIDGET_URI,
+      },
+    });
+    expect(activity.details.result.details).toEqual({
+      _meta: EXAMPLE_WIDGET_META,
+      mcpAppResourceUri: EXAMPLE_WIDGET_URI,
+    });
+    expect(JSON.stringify(activity)).not.toContain("server-internal");
+    expect(Buffer.byteLength(JSON.stringify(activity.details.result), "utf8")).toBeLessThanOrEqual(
+      32_768,
+    );
+  });
+
+  it.each([
+    ["non-app URI", "https://example/widget.html", false],
+    ["URI at the length limit", `ui://${"x".repeat(2_043)}`, true],
+    ["URI over the length limit", `ui://${"x".repeat(2_044)}`, false],
+  ] as const)("bounds the fallback resource URI: %s", async (_label, resourceUri, retained) => {
+    const activity = await runNestedCatalogTool({
+      content: [{ type: "text", text: "synthetic widget payload" }],
+      details: {
+        structuredContent: oversizedStructuredContent(),
+        mcpAppResourceUri: resourceUri,
+      },
+    });
+    expect(activity.details.result.details).toEqual(
+      retained ? { mcpAppResourceUri: resourceUri } : undefined,
+    );
+    expect(readNestedToolActivity(activity)).toBeDefined();
+  });
+
   it("retains only allowlisted UI metadata and a bounded URI without a preview", async () => {
     const activity = await runNestedCatalogTool({
       content: [{ type: "text", text: "synthetic widget payload" }],

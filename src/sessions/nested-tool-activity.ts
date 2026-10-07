@@ -23,7 +23,8 @@ const activityResult = z
     appContext: z.unknown().optional(),
     mcpAppResourceUri: z.string().optional(),
   })
-  .strict();
+  // Runtime-only flags (e.g. terminate) are valid tool results, not transcript fields.
+  .strip();
 const activityDetails = z
   .object({
     runId: correlationId,
