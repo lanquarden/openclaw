@@ -2,12 +2,17 @@ import { asOptionalRecord } from "@openclaw/normalization-core/record-coerce";
 import { z } from "zod";
 import { boundedJsonUtf8Bytes } from "../infra/json-utf8-bytes.js";
 
-const NESTED_TOOL_ACTIVITY_CUSTOM_TYPE = "openclaw.nested-tool.v1";
+export const NESTED_TOOL_ACTIVITY_CUSTOM_TYPE = "openclaw.nested-tool.v1";
 
 const correlationId = z.string().min(1).max(1024);
 /**
- * The previous default-strip result object omitted top-level MCP App descriptor
- * fields. Admit them explicitly so they survive transcript validation.
+ * Result envelope persisted for a nested (catalog/deferred) tool call.
+ *
+ * Besides the model-visible `content`/`details`, MCP integrations surface an app
+ * descriptor (CallToolResult `_meta`, `appContext`, `mcpAppResourceUri`, and the
+ * materialized `details.mcpAppPreview`) that the Control UI needs to register and
+ * render an MCP App. The previous default-strip result object omitted these slots;
+ * declare them explicitly so they survive validation before reaching the transcript.
  */
 const activityResult = z
   .object({
@@ -88,16 +93,24 @@ function readBoundedUiMeta(value: unknown): { ui: Record<string, unknown> } | un
   return ui ? { ui } : undefined;
 }
 
-/** Retain one bounded app descriptor when oversized nested output is elided. */
+/**
+ * Replace an oversized nested result with a display placeholder while retaining a
+ * single, bounded app descriptor. Truncating the whole envelope would otherwise
+ * discard the `viewId`/`resourceUri` the Control UI needs, so a catalog/deferred
+ * MCP tool would run successfully yet render no MCP App.
+ */
 function elideNestedToolResult(result: unknown): Record<string, unknown> {
   const record = asOptionalRecord(result);
   const resultDetails = asOptionalRecord(record?.details);
   const content = [{ type: "text", text: "[Nested tool output omitted: exceeds display limit]" }];
+  // Prefer the materialized descriptor the Control UI actually reads.
   const preview = readBoundedRecord(resultDetails?.mcpAppPreview);
   const details: Record<string, unknown> = {};
   if (preview) {
     details.mcpAppPreview = preview;
   } else {
+    // Fall back to the raw UI descriptor for native/other producers; keep only
+    // allowlisted UI metadata (never the arbitrary `_meta` payload) and a bounded URI.
     const uiMeta = readBoundedUiMeta(resultDetails?._meta) ?? readBoundedUiMeta(record?._meta);
     if (uiMeta) {
       details._meta = uiMeta;
@@ -111,6 +124,7 @@ function elideNestedToolResult(result: unknown): Record<string, unknown> {
   }
   const elided: Record<string, unknown> =
     Object.keys(details).length > 0 ? { content, details } : { content };
+  // Guarantee the retained descriptor stays within the original display cap.
   if (boundedJsonUtf8Bytes(elided, MAX_RESULT_BYTES).complete) {
     return elided;
   }

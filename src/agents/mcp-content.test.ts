@@ -42,4 +42,23 @@ describe("projectMcpCallToolResult UI metadata", () => {
       isError: true,
     });
   });
+
+  it("preserves only the allowlisted UI slice of the CallToolResult `_meta`", () => {
+    const result = projectMcpCallToolResult({
+      content: [{ type: "text", text: "ok" }],
+      _meta: { ui: { resourceUri: "ui://example/widget.html" }, secret: "server-internal" },
+    });
+    expect((result.details as Record<string, unknown>)._meta).toEqual({
+      ui: { resourceUri: "ui://example/widget.html" },
+    });
+    expect(JSON.stringify(result.details)).not.toContain("server-internal");
+  });
+
+  it("omits `_meta` when it carries no UI descriptor", () => {
+    const result = projectMcpCallToolResult({
+      content: [{ type: "text", text: "ok" }],
+      _meta: { trace: "abc" },
+    });
+    expect(result.details).not.toHaveProperty("_meta");
+  });
 });
