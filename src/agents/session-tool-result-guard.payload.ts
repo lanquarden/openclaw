@@ -2,6 +2,7 @@ import { resolveIntegerOption } from "@openclaw/normalization-core/number-coerci
 import { asOptionalObjectRecord, isRecord } from "@openclaw/normalization-core/record-coerce";
 import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
 import { sliceUtf16Safe, truncateUtf16Safe } from "@openclaw/normalization-core/utf16-slice";
+import { extractCanvasFromDetails } from "../chat/canvas-render.js";
 import {
   boundedJsonUtf8Bytes,
   firstEnumerableOwnKeys,
@@ -31,6 +32,8 @@ export function resolveMaxToolResultChars(opts?: { maxToolResultChars?: number }
 // disk, replay repair, transcript broadcasts, or future tooling that reads raw
 // sessions. Model-visible text belongs in tool result `content`.
 const MAX_PERSISTED_TOOL_RESULT_DETAILS_BYTES = 8_192;
+// Leave room for the enclosing details summary and its diagnostic/status fields.
+const MAX_PERSISTED_MCP_APP_PREVIEW_BYTES = 4_096;
 const MAX_PERSISTED_DETAIL_STRING_CHARS = 2_000;
 const MAX_PERSISTED_DETAIL_SESSION_COUNT = 10;
 const MAX_PERSISTED_DETAIL_FALLBACK_STRING_CHARS = 200;
@@ -241,6 +244,44 @@ function copyPersistedResultStateFields(
   }
 }
 
+/** Retain only the renderable descriptor, never arbitrary MCP result metadata. */
+function copyPersistedMcpAppPreview(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+  redactionConfig?: ToolResultDetailRedactionConfig,
+): void {
+  const raw = asOptionalObjectRecord(source.mcpAppPreview);
+  if (!raw || !boundedJsonUtf8Bytes(raw, MAX_PERSISTED_MCP_APP_PREVIEW_BYTES).complete) {
+    return;
+  }
+  const preview = extractCanvasFromDetails({
+    mcpAppPreview: redactPersistedDetailValue(raw, 0, undefined, redactionConfig),
+  });
+  if (!preview?.mcpApp || preview.viewId !== preview.mcpApp.viewId) {
+    return;
+  }
+  const descriptor = {
+    kind: "canvas",
+    view: { id: preview.viewId, ...(preview.title ? { title: preview.title } : {}) },
+    presentation: {
+      target: preview.surface,
+      ...(preview.title ? { title: preview.title } : {}),
+      ...(preview.preferredHeight ? { preferred_height: preview.preferredHeight } : {}),
+      ...(preview.sandbox ? { sandbox: preview.sandbox } : {}),
+    },
+    mcpApp: preview.mcpApp,
+  };
+  if (boundedJsonUtf8Bytes(descriptor, MAX_PERSISTED_MCP_APP_PREVIEW_BYTES).complete) {
+    target.mcpAppPreview = descriptor;
+    if (preview.mcpApp.serverName) {
+      target.mcpServer = preview.mcpApp.serverName;
+    }
+    if (preview.mcpApp.toolName) {
+      target.mcpTool = preview.mcpApp.toolName;
+    }
+  }
+}
+
 function buildPersistedDetailsFallback(
   src: Record<string, unknown> | undefined,
   originalSize: BoundedJsonUtf8Bytes,
@@ -259,6 +300,7 @@ function buildPersistedDetailsFallback(
     fallback.sanitizedDetailsBytes = sanitizedBytes;
   }
   if (src) {
+    copyPersistedMcpAppPreview(fallback, src, redactionConfig);
     fallback.originalDetailKeys = redactedOriginalDetailKeys(src, redactionConfig);
     copyPersistedSummaryFields({
       target: fallback,
@@ -304,8 +346,17 @@ function enforcePersistedDetailsByteCap(
     sanitizedBytes,
     redactionConfig,
   );
-  return jsonUtf8BytesOrInfinity(fallback) <= MAX_PERSISTED_TOOL_RESULT_DETAILS_BYTES
-    ? fallback
+  if (jsonUtf8BytesOrInfinity(fallback) <= MAX_PERSISTED_TOOL_RESULT_DETAILS_BYTES) {
+    return fallback;
+  }
+  const minimal = buildPersistedDetailsFallback(undefined, originalSize, sanitizedBytes);
+  // Even diagnostic key names can overflow the fallback. Preserve app identity
+  // independently of those diagnostics during the final reduction too.
+  if (isRecord(originalDetails)) {
+    copyPersistedMcpAppPreview(minimal, originalDetails, redactionConfig);
+  }
+  return jsonUtf8BytesOrInfinity(minimal) <= MAX_PERSISTED_TOOL_RESULT_DETAILS_BYTES
+    ? minimal
     : buildPersistedDetailsFallback(undefined, originalSize, sanitizedBytes);
 }
 
@@ -372,6 +423,7 @@ function sanitizeToolResultDetailsForPersistence(
     maxChars: MAX_PERSISTED_DETAIL_STRING_CHARS,
     redactionConfig,
   });
+  copyPersistedMcpAppPreview(out, src, redactionConfig);
   copyPersistedResultStateFields(out, src, MAX_PERSISTED_DETAIL_STRING_CHARS, redactionConfig);
   if (typeof src.tail === "string") {
     out.tail = redactPersistedDetailString(
