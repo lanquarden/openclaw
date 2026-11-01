@@ -17,6 +17,7 @@ import {
 } from "./provider-catalog.js";
 import { resolveThinkingProfile } from "./provider-policy-api.js";
 import { createOpencodeGoWireWrapper, createOpencodeGoWrapper } from "./stream.js";
+import { fetchOpencodeGoUsage } from "./usage.js";
 
 const PROVIDER_ID = "opencode-go";
 
@@ -129,6 +130,17 @@ export default defineSingleProviderPluginEntry({
       const sessionId = ctx.sessionId?.trim() || ctx.turnId.trim();
       return sessionId ? { headers: { "x-opencode-session": sessionId } } : undefined;
     },
+    // Go is a subscription: the shared OpenCode API key also authorizes the
+    // per-plan usage endpoint, so quota windows stay provider-owned here.
+    resolveUsageAuth: async (ctx) => {
+      const apiKey = ctx.resolveApiKeyFromConfigAndStore({
+        providerIds: [PROVIDER_ID, "opencode"],
+        envDirect: [ctx.env.OPENCODE_API_KEY, ctx.env.OPENCODE_ZEN_API_KEY],
+      });
+      return apiKey ? { token: apiKey } : null;
+    },
+    fetchUsageSnapshot: async (ctx) =>
+      await fetchOpencodeGoUsage(ctx.token, ctx.timeoutMs, ctx.fetchFn),
     wrapStreamFn: createOpencodeGoWrapper,
     wrapSimpleCompletionStreamFn: createOpencodeGoWireWrapper,
     isModernModelRef: () => true,

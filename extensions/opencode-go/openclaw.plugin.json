@@ -193,7 +193,8 @@
     }
   ],
   "contracts": {
-    "mediaUnderstandingProviders": ["opencode-go"]
+    "mediaUnderstandingProviders": ["opencode-go"],
+    "usageProviders": ["opencode-go"]
   },
   "mediaUnderstandingProviderMetadata": {
     "opencode-go": {
