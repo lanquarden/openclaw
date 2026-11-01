@@ -95,11 +95,16 @@ export async function fetchOpencodeGoUsage(
     fetchFn,
   );
   if (!response.ok) {
-    await response.body?.cancel().catch(() => undefined);
+    // A capture tee can leave cancellation pending until the sibling reader
+    // finishes, so release the body without awaiting it (see
+    // src/infra/http-response-body.ts: an HTTP error must not become a timeout).
+    void response.body?.cancel().catch(() => undefined);
     return buildUsageHttpErrorSnapshot({
       provider: OPENCODE_GO_PROVIDER_ID,
       status: response.status,
-      tokenExpiredStatuses: [401, 403],
+      // A shared OpenCode key without Go entitlement answers 403; that is
+      // denied access, not proof of an expired credential.
+      tokenExpiredStatuses: [401],
     });
   }
 

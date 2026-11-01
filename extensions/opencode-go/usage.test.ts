@@ -79,6 +79,48 @@ describe("fetchOpencodeGoUsage", () => {
   });
 
   it.each([
+    [403, "HTTP 403"],
+    [429, "HTTP 429"],
+    [500, "HTTP 500"],
+  ])("keeps HTTP %i distinct from expired credentials", async (status, error) => {
+    const mockFetch = createProviderUsageFetch(async () => makeResponse(status, { error: "nope" }));
+    await expect(fetchOpencodeGoUsage("opencode-key", 5000, mockFetch)).resolves.toEqual({
+      provider: "opencode-go",
+      displayName: "opencode-go",
+      windows: [],
+      error,
+    });
+  });
+
+  it("does not wait for body cancellation on HTTP errors", async () => {
+    // A capture tee can leave cancel() pending until its sibling reader drains.
+    const mockFetch = createProviderUsageFetch(
+      async () =>
+        ({
+          ok: false,
+          status: 429,
+          body: { cancel: () => new Promise<void>(() => {}) },
+        }) as unknown as Response,
+    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const guard = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("hung on body cancellation")), 500);
+    });
+
+    const snapshot = await Promise.race([
+      fetchOpencodeGoUsage("opencode-key", 5000, mockFetch),
+      guard,
+    ]);
+    clearTimeout(timer);
+    expect(snapshot).toEqual({
+      provider: "opencode-go",
+      displayName: "opencode-go",
+      windows: [],
+      error: "HTTP 429",
+    });
+  });
+
+  it.each([
     ["malformed JSON", "{not-json", "Malformed usage response"],
     ["missing usage", {}, "Malformed usage response"],
     ["empty usage", { usage: {} }, "No usage data"],
