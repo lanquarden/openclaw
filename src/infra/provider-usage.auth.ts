@@ -262,6 +262,15 @@ function resolveUsageCredentialProviderIds(params: {
       for (const providerId of pluginProviderIds) {
         providerIds.add(providerId);
       }
+      // A subscription can share its credential with a sibling provider id
+      // (for example OpenCode Go reusing the OpenCode key). Those ids only
+      // widen credential-source checks; provider ownership stays unchanged.
+      for (const providerId of plugin.contracts?.usageCredentialProviders ?? []) {
+        const credentialProviderId = providerId ? normalizeProviderId(providerId) : "";
+        if (credentialProviderId) {
+          providerIds.add(credentialProviderId);
+        }
+      }
     }
   } catch {
     // Credential-source checks are an optimization gate; preserve usage fallback

@@ -194,7 +194,8 @@
   ],
   "contracts": {
     "mediaUnderstandingProviders": ["opencode-go"],
-    "usageProviders": ["opencode-go"]
+    "usageProviders": ["opencode-go"],
+    "usageCredentialProviders": ["opencode"]
   },
   "mediaUnderstandingProviderMetadata": {
     "opencode-go": {

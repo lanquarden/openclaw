@@ -25,6 +25,12 @@ export const PLUGIN_MANIFEST_CONTRACT_KEYS = [
   "storageProviders",
   /** Provider ids whose plugin owns usage auth and snapshot hooks. */
   "usageProviders",
+  /**
+   * Provider ids whose credentials may authorize a usage provider listed above
+   * (for example a shared API key across a subscription and a pay-as-you-go
+   * sibling). Read-only credential sources: this never transfers ownership.
+   */
+  "usageCredentialProviders",
   "migrationProviders",
   "gatewayMethodDispatch",
   "tools",

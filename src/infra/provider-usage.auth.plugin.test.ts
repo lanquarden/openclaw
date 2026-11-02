@@ -60,6 +60,15 @@ vi.mock("../plugins/manifest-contract-eligibility.js", () => ({
           openai: ["OPENAI_ADMIN_KEY"],
         },
       },
+      {
+        id: "opencode-go",
+        origin: "bundled",
+        providers: ["opencode-go"],
+        contracts: {
+          usageProviders: ["opencode-go"],
+          usageCredentialProviders: ["opencode"],
+        },
+      },
     ],
   }),
 }));
@@ -229,6 +238,45 @@ describe("provider usage auth boundary", () => {
     expect(await resolve(["anthropic"])).toEqual([]);
     expect(loadLocalStore).toHaveBeenCalledOnce();
     expect(loadStore).not.toHaveBeenCalled();
+    expect(resolvePlugin).not.toHaveBeenCalled();
+  });
+
+  it("admits a sibling credential id declared by usageCredentialProviders", async () => {
+    seed(
+      {
+        "opencode:default": {
+          type: "api_key",
+          provider: "opencode",
+          key: "shared-opencode-key",
+        },
+      },
+      { opencode: ["opencode:default"] },
+    );
+    resolveKey.mockResolvedValue({ apiKey: "shared-opencode-key", provider: "opencode" });
+    resolvePlugin.mockImplementationOnce(async ({ context }) => {
+      const token = context.resolveApiKeyFromConfigAndStore({
+        providerIds: ["opencode-go", "opencode"],
+      });
+      return token ? { token } : undefined;
+    });
+    expect(await resolve(["opencode-go"])).toEqual([
+      { provider: "opencode-go", token: "shared-opencode-key" },
+    ]);
+    expect(resolvePlugin.mock.calls.map(([params]) => params.provider)).toEqual(["opencode-go"]);
+  });
+
+  it("keeps undeclared sibling credentials out of other usage providers", async () => {
+    seed(
+      {
+        "opencode:default": {
+          type: "api_key",
+          provider: "opencode",
+          key: "shared-opencode-key",
+        },
+      },
+      { opencode: ["opencode:default"] },
+    );
+    expect(await resolve(["zai"])).toEqual([]);
     expect(resolvePlugin).not.toHaveBeenCalled();
   });
 
