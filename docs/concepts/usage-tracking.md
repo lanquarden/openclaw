@@ -392,6 +392,13 @@ provider-neutral for CLI, app, and Control UI consumers.
   credits; OpenClaw does not label them as dollars. `OPENAI_ADMIN_KEY` adds
   30-day organization cost and completions-usage history when the key has Usage
   Dashboard access. Inference credentials are never forwarded to organization APIs.
+- **OpenCode Go**: shared OpenCode API key (`OPENCODE_API_KEY` or
+  `OPENCODE_ZEN_API_KEY`, or the `opencode`/`opencode-go` auth profile). The
+  subscription reports per-plan rolling (5-hour), weekly, and monthly windows
+  from `https://opencode.ai/zen/go/v1/usage`, so partial usage shows as
+  `X% left` with reset times. The key also serves the separate OpenCode Zen
+  provider, so the plugin declares it in `contracts.usageCredentialProviders`
+  rather than claiming Zen ownership.
 - **OpenRouter**: API key or OAuth-backed API key (`OPENROUTER_API_KEY` or an auth
   profile). Combines the account credits endpoint with the key quota endpoint,
   so account balance/spend, key budget, and daily/weekly/monthly usage appear

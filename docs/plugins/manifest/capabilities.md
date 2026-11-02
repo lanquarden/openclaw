@@ -80,6 +80,7 @@ Each list is optional. For `speechProviders` and `realtimeVoiceProviders`, list 
 | `workerProviders`                | `string[]` | Cloud-worker provider ids this plugin owns for provisioning and profile-backed lease lifecycle.                                      |
 | `storageProviders`               | `string[]` | Storage transport ids registered with `api.registerStorageProvider`; selected by named storage locations.                            |
 | `usageProviders`                 | `string[]` | Provider ids whose usage-auth and usage-snapshot hooks this plugin owns.                                                             |
+| `usageCredentialProviders`       | `string[]` | Additional provider ids whose stored credentials may authorize the usage ids above (shared subscription keys). No ownership implied. |
 | `migrationProviders`             | `string[]` | Import provider ids this plugin owns for [`openclaw migrate`](/cli/migrate).                                                         |
 | `gatewayMethodDispatch`          | `string[]` | Reserved entitlement for authenticated plugin HTTP routes that dispatch Gateway methods in-process.                                  |
 | `tools`                          | `string[]` | Agent tool names this plugin owns.                                                                                                   |
@@ -95,6 +96,8 @@ Runtime `api.registerTool(...)` registrations must match `contracts.tools`. Tool
 Provider plugins that implement `resolveExternalAuthProfiles` should declare `contracts.externalAuthProviders`; undeclared external-auth hooks are ignored.
 
 Provider plugins that implement both `resolveUsageAuth` and `fetchUsageSnapshot` should declare each auto-discovered provider id in `contracts.usageProviders`. Usage discovery reads this contract before loading runtime code, then verifies both hooks after loading only the declared owners.
+
+When a subscription shares one credential with a sibling provider id (for example OpenCode Go reusing the OpenCode key), list the sibling in `contracts.usageCredentialProviders`. Those ids only widen the credential-source check that decides whether the usage hooks may run; they do not transfer provider ownership.
 
 Embedding providers must declare `contracts.embeddingProviders` for each adapter registered with `api.registerEmbeddingProvider(...)`. The same generic contract serves reusable vector generation and memory search. The retired `contracts.memoryEmbeddingProviders` key is no longer accepted.
 
